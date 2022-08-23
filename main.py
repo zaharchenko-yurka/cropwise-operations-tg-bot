@@ -1,8 +1,8 @@
-'''
-Тренуюсь працювати з API взагалі та з API Cropio особисто
+"""Тренуюсь працювати з API взагалі та з API Cropio особисто.
+
 спробуємо побудувати Телеграм-бота, що попереджатиме місцевих
 пасічників про майбутні обприскування полів з медоносами
-'''
+"""
 from datetime import date, datetime
 import json
 import requests
@@ -42,15 +42,14 @@ headers = {
   'Content-Type': 'application/json',
   'X-User-Api-Token': 'n3bR3d7WNNMEG9TXEdBZ'
 }
-chemicals = requests.get(urls['Chemicals'], headers = headers).json()['data'] # забрали список наявних хімікатів, потім згодиться
-fields = requests.get(urls['Fields'], headers = headers).json()['data'] # і список полів
+chemicals = requests.get(urls['Chemicals'], headers=headers).json()['data']  # забрали список наявних хімікатів, потім згодиться
+fields = requests.get(urls['Fields'], headers=headers).json()['data']  # і список полів
+
 
 def honey_crops_ids():
-    '''
-    отримуємо список з id медоносів
-    '''
+    """отримуємо список з id медоносів."""
     honey_crops_id = []
-    crops = requests.get(urls['Crops'], headers = headers)
+    crops = requests.get(urls['Crops'], headers=headers)
     for crop in crops.json()['data']:
         if crop['standard_name'] in crops_standard_name:
             honey_crops_id.append(crop['id'])
@@ -58,12 +57,10 @@ def honey_crops_ids():
 
 
 def honey_fields_ids(honey_crops):
-    '''
-    отримуємо список id полів у поточному році з медоносами
-    '''
+    """отримуємо список id полів у поточному році з медоносами."""
     year_now = datetime.now().year
     honey_fields_id = []
-    fieldses = requests.get(urls['HistoryItems'], headers = headers)
+    fieldses = requests.get(urls['HistoryItems'], headers=headers)
     for field in fieldses.json()['data']:
         if int(field['year']) == year_now and field['crop_id'] in honey_crops:
             honey_fields_id.append(field['field_id'])
@@ -71,12 +68,13 @@ def honey_fields_ids(honey_crops):
 
 
 def get_planned_operations(honey_fields):
-    '''
-    отримуємо список запланованих оприскувань хімікатами на полях з медоносами на майбутнє, або сьогодні
+    """отримуємо список запланованих оприскувань.
+    
+    хімікатами на полях з медоносами на майбутнє або сьогодні,
     повертаємо ітератор
-    '''
+    """
     date_today = date.today()
-    operations = requests.get(urls['AgroOperations'], headers = headers)
+    operations = requests.get(urls['AgroOperations'], headers=headers)
     for operation in operations.json()['data']:
         if operation['planned_start_date'] >= str(date_today) and operation['field_id'] in honey_fields and operation['operation_subtype'] == 'spraying' and operation['status'] == 'planned':
             for item in operation['application_mix_items']:
@@ -85,12 +83,12 @@ def get_planned_operations(honey_fields):
 
 
 def centroide(field_shape):
-    '''
-    обчислюємо центроід поля і формуємо посилання на OpenStreetMap з маркером в центрі поля
+    """обчислюємо центроід поля і формуємо посилання на OpenStreetMap з маркером в центрі поля.
+
     c = [[1,4,-5],[3,-2,9]] # of the form [[x1,x2,x3],[y1,y2,y3]]
     centroide = (sum(c[0])/len(c[0]),sum(c[1])/len(c[1]))
     https://www.openstreetmap.org/?mlat=47.2611&mlon=35.6749#map=14/47.2611/35.6749&layers=H
-    '''
+    """
     lat = []
     lon = []
     for dot in field_shape:
@@ -102,10 +100,11 @@ def centroide(field_shape):
 
 
 def posting(start_date, field_id, chemical_id):
-    '''
-    повертаємо повідомлення про заплановане обприскування, вказуємо дату, тип і назву препарата, даємо посилання
+    """повертаємо повідомлення про заплановане обприскування.
+    
+    вказуємо дату, тип і назву препарата, даємо посилання
     на карту з позначеним полем
-    '''
+    """
     for chemical in chemicals:
         if chemical['id'] == chemical_id:
             chemical_name = chemical['name']
