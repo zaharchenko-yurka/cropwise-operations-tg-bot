@@ -24,7 +24,10 @@ urls = {
   'HistoryItems': 'https://operations.cropwise.com/api/v3/history_items',
   'WeatherItem': 'https://operations.cropwise.com/api/v3/weather_items',
   'WorkType': 'https://operations.cropwise.com/api/v3/work_types',
-  'WorkTypeAllowedCrops': 'https://operations.cropwise.com/api/v3/work-type-allowed-crops'
+  'WorkTypeAllowedCrops': 'https://operations.cropwise.com/api/v3/work-type-allowed-crops',
+  'BotMessage': 'https://api.telegram.org/bot5644102783:AAEljujnXigZTsrhScS7zzaZSxHDOKHLAJQ/sendMessage',
+  'BotLocation': 'https://api.telegram.org/bot5644102783:AAEljujnXigZTsrhScS7zzaZSxHDOKHLAJQ/sendLocation',
+  'BotVenue': 'https://api.telegram.org/bot5644102783:AAEljujnXigZTsrhScS7zzaZSxHDOKHLAJQ/sendVenue'
 }
 
 headers = {
@@ -32,9 +35,30 @@ headers = {
   'X-User-Api-Token': 'n3bR3d7WNNMEG9TXEdBZ'
 }
 
-# response = requests.get(urls['Fields'], headers = headers)
-# print(response.status_code, status_codes[str(response.status_code)], sep=': ')
-with open ("fields.txt", "r") as f:
-#     f.write(str(response.text))
-    dictionare = json.loads(json.load(f)['data'][0]['shape_simplified_geojson'])['coordinates'][0][0]
-print(dictionare[5])
+message_params = {
+  'chat_id': '333720683',
+  'text': 'Ага, блять!'
+}
+
+location_params = {
+  'chat_id': '333720683',
+  'latitude': '47.24961561223967',
+  'longitude': '35.67936155896145',
+  'disable_notification': 'True'
+}
+
+venue_params = {
+  'chat_id': '333720683',
+  'latitude': '47.24961561223967',
+  'longitude': '35.67936155896145',
+  'title': 'і слухай, блядь, от, блядь, він смотрить, шо та хуйня летить, кругом...',
+  'address': 'Токмак'
+}
+
+response = requests.get(urls['BotVenue'], params=venue_params)
+print(response.status_code, status_codes[str(response.status_code)], sep=': ')
+print(response.json())
+# with open ("fields.txt", "r") as f:
+# #     f.write(str(response.text))
+#     dictionare = json.loads(json.load(f)['data'][0]['shape_simplified_geojson'])['coordinates'][0][0]
+# print(dictionare[5])
