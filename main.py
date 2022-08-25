@@ -111,15 +111,12 @@ def posting(start_date, field_id, chemical_id):
         start_date_text = 'сьогодні'
     elif start_date == arrow.utcnow().shift(days=+1):
         start_date_text = 'завтра'
-    else start_date_text = 'післязавтра'
+    else: start_date_text = 'післязавтра'
 
     return ['''На {0} планується обробка поля \"{1}\"{2}. Препарат: {3}, що входить до групи {4}.'''.format(start_date_text, field_name, field_locality, chemical_name, chemical_type), centroide(field_shape)]
 
 def post_message(args:list):
-    """відправляємо повідомлення в Телегу з API.
-    
-    надсилаємо текстове повідомлення і координати поля
-    """
+    """відправляємо повідомлення в Телегу з API."""
     message_params = {
      'chat_id': '333720683',  # ! потім замінити на id групи, в яку будемо постити
      'text': args[0]
@@ -130,9 +127,9 @@ def post_message(args:list):
      'longitude': str(args[1][1]),
      'disable_notification': 'True'
     }
-    response = requests.get(urls['BotMessage'], params=message_params)
+    response = requests.get(urls['BotMessage'], params=message_params)  # надсилаємо текстове повідомлення
     print(response.json())
-    response = requests.get(urls['BotLocation'], params=location_params)
+    response = requests.get(urls['BotLocation'], params=location_params)  # і координати поля
     print(response.json())
     return
 
