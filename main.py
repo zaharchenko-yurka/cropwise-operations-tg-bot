@@ -3,7 +3,7 @@
 спробуємо побудувати Телеграм-бота, що попереджатиме місцевих
 пасічників про майбутні обприскування полів з медоносами
 """
-from datetime import date, datetime  # todo: замінити модуль на arrows
+import arrow
 import json
 import requests
 
@@ -53,11 +53,10 @@ def honey_crops_ids():
 
 def honey_fields_ids(honey_crops):
     """отримуємо список id полів у поточному році з медоносами."""
-    year_now = datetime.now().year
     honey_fields_id = []
     fieldses = requests.get(urls['HistoryItems'], headers=headers)
     for field in fieldses.json()['data']:
-        if int(field['year']) == year_now and field['crop_id'] in honey_crops:
+        if int(field['year']) == arrow.now().year and field['crop_id'] in honey_crops:
             honey_fields_id.append(field['field_id'])
     return honey_fields_id
 
@@ -67,13 +66,12 @@ def get_planned_operations(honey_fields):
     хімікатами на полях з медоносами на майбутнє або сьогодні,
     повертаємо ітератор
     """
-    date_today = date.today()  # todo: обмежити диапазон дат від сьогодні до післязавтра
     operations = requests.get(urls['AgroOperations'], headers=headers)
     for operation in operations.json()['data']:
-        if operation['planned_start_date'] >= str(date_today) and operation['field_id'] in honey_fields and operation['operation_subtype'] == 'spraying' and operation['status'] == 'planned':
+        if arrow.utcnow().floor('day') <= arrow.get(operation['planned_start_date'], 'YYYY-MM-DD') <= arrow.utcnow().shift(days=+2).floor('day') and operation['field_id'] in honey_fields and operation['operation_subtype'] == 'spraying' and operation['status'] == 'planned':
             for item in operation['application_mix_items']:
                 if item['applicable_type'] == 'Chemical':
-                    yield (operation['planned_start_date'], operation['field_id'], item['applicable_id'])
+                    yield (arrow.get(operation['planned_start_date'], 'YYYY-MM-DD'), operation['field_id'], item['applicable_id'])
 
 def centroide(field_shape):
     """обчислюємо центроід поля.
@@ -109,8 +107,13 @@ def posting(start_date, field_id, chemical_id):
             field_shape = json.loads(field['shape_simplified_geojson'])['coordinates'][0][0]
             field_locality = f", місце розташування: {field['locality']}" if field['locality'] else ''
             break
-    return ['''На {0} планується обробка поля \"{1}\"{2}. Препарат: {3}, що входить до групи {4}.'''.format(start_date, field_name, field_locality, chemical_name, chemical_type), centroide(field_shape)]
-# todo: замість дати підставляти слова "сбогодні/завтра/післязавтра"
+    if start_date == arrow.utcnow():
+        start_date_text = 'сьогодні'
+    elif start_date == arrow.utcnow().shift(days=+1):
+        start_date_text = 'завтра'
+    else start_date_text = 'післязавтра'
+
+    return ['''На {0} планується обробка поля \"{1}\"{2}. Препарат: {3}, що входить до групи {4}.'''.format(start_date_text, field_name, field_locality, chemical_name, chemical_type), centroide(field_shape)]
 
 def post_message(args:list):
     """відправляємо повідомлення в Телегу з API.

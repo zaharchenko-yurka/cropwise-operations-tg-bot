@@ -1,5 +1,6 @@
 import requests
 import json
+import arrow
 
 status_codes = {
     '200': 'OK — Запит був успішним',
@@ -55,10 +56,15 @@ venue_params = {
   'address': 'Токмак'
 }
 
-response = requests.get(urls['BotVenue'], params=venue_params)
-print(response.status_code, status_codes[str(response.status_code)], sep=': ')
-print(response.json())
+# response = requests.get(urls['BotVenue'], params=venue_params)
+# print(response.status_code, status_codes[str(response.status_code)], sep=': ')
+# print(response.json())
 # with open ("fields.txt", "r") as f:
 # #     f.write(str(response.text))
 #     dictionare = json.loads(json.load(f)['data'][0]['shape_simplified_geojson'])['coordinates'][0][0]
 # print(dictionare[5])
+print(arrow.get("2022-08-25", 'YYYY-MM-DD'))
+print(arrow.now().shift(days=+2).floor('day'))
+print(arrow.now().floor('day'))
+if arrow.utcnow().floor('day') <= arrow.get("2022-08-28", 'YYYY-MM-DD') <= arrow.utcnow().shift(days=+2).floor('day'):
+    print('da')
