@@ -1,0 +1,6 @@
+venv/
+.vscode/
+.mypy_cache/
+run_me_yurets.bat
+_data/
+.env

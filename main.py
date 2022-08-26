@@ -6,6 +6,10 @@
 import arrow
 import json
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 urls = {
   'AgroOperations': 'https://operations.cropwise.com/api/v3/agro_operations',
@@ -13,8 +17,8 @@ urls = {
   'Chemicals': 'https://operations.cropwise.com/api/v3/chemicals',
   'Fields': 'https://operations.cropwise.com/api/v3/fields',
   'HistoryItems': 'https://operations.cropwise.com/api/v3/history_items',
-  'BotMessage': 'https://api.telegram.org/bot5644102783:AAEljujnXigZTsrhScS7zzaZSxHDOKHLAJQ/sendMessage',
-  'BotLocation': 'https://api.telegram.org/bot5644102783:AAEljujnXigZTsrhScS7zzaZSxHDOKHLAJQ/sendLocation'
+  'BotMessage': f'https://api.telegram.org/bot{os.getenv("TOKEN_TELEGRAM")}/sendMessage',
+  'BotLocation': f'https://api.telegram.org/bot{os.getenv("TOKEN_TELEGRAM")}/sendLocation'
 }
 crops_standard_name = {
   "buckwheat",
@@ -35,7 +39,7 @@ chemical_types = {
 }
 headers = {
   'Content-Type': 'application/json',
-  'X-User-Api-Token': 'n3bR3d7WNNMEG9TXEdBZ'
+  'X-User-Api-Token': os.getenv('TOKEN_CROPIO')
 }
 
 chemicals = requests.get(urls['Chemicals'], headers=headers).json()['data']  # забрали список наявних хімікатів, потім згодиться
@@ -118,11 +122,11 @@ def posting(start_date, field_id, chemical_id):
 def post_message(args:list):
     """відправляємо повідомлення в Телегу з API."""
     message_params = {
-     'chat_id': '333720683',  # ! потім замінити на id групи, в яку будемо постити
+     'chat_id': os.getenv('CHAT_ID'),
      'text': args[0]
     }
     location_params = {
-    'chat_id': '333720683',  # ! потім замінити на id групи, в яку будемо постити
+    'chat_id': os.getenv('CHAT_ID'),
      'latitude': str(args[1][0]),
      'longitude': str(args[1][1]),
      'disable_notification': 'True'
@@ -132,7 +136,6 @@ def post_message(args:list):
     response = requests.get(urls['BotLocation'], params=location_params)  # і координати поля
     print(response.json())
     return
-
 
 if __name__ == '__main__':
     for operation in get_planned_operations(honey_fields_ids(honey_crops_ids())):
