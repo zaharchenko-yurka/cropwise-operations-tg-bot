@@ -1,0 +1,23 @@
+---
+version: 1
+formatters:
+  detailed:
+    format: '%(asctime)s - %(lineno)s:%(levelname)s - %(message)s'
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: detailed
+    stream: ext://sys.stdout
+  file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    encoding: 'UTF8'
+    filename: logs/python.log
+    maxBytes: 1048576
+    backupCount: 5
+loggers:
+  app:
+    level: DEBUG
+    handlers: [console, file]

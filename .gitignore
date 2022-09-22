@@ -4,3 +4,4 @@ venv/
 run_me_yurets.bat
 _data/
 .env
+exp.py
