@@ -3,16 +3,18 @@
 спробуємо побудувати Телеграм-бота, що попереджатиме місцевих
 пасічників про майбутні обприскування полів з медоносами
 """
-import arrow
 import json
-import requests
+import time  # fixme спробувати замінити бібліотеку arrow на time
+import logging
+import logging.config
 import os
+import requests
 from dotenv import load_dotenv
-import logging, logging.config
 import yaml
+import arrow
 
 load_dotenv()
-with open("logger.yaml", "r") as logger_settings_file:
+with open("logger.yaml", "r", encoding="utf-8") as logger_settings_file:
     logger_settings = yaml.load(logger_settings_file, yaml.Loader)
 logging.config.dictConfig(logger_settings)
 logger = logging.getLogger("app")
@@ -24,37 +26,56 @@ urls = {
 
 
 class Cropwise:
+    """Містить всі функції для роботи з API Cropwise."""
     def __init__(self, cropio_token) -> None:
         self.headers = {"Content-Type": "application/json"}
         self.headers["X-User-Api-Token"] = cropio_token  # os.getenv('TOKEN_CROPIO')
+        self.now = time.localtime()
+        while self.get_cropwise_info() - {200, 201, 204}:
+            time.sleep(900)  # fixme додати обробку кількох невдалих запитів поспіль
+
+    def get_cropwise_info(self):
+        """отримуємо всю необхідну інформацію від Cropwise Operations.
+
+        Returns:
+            set: коди статусу відповідей від сервера
+        """
+        response_status = set()
         try:
             self.chemicals = requests.get(
                 "https://operations.cropwise.com/api/v3/chemicals", headers=self.headers
-            ).json()[
-                "data"
-            ]  # забрали список наявних хімікатів, потім згодиться.
+            )  # забрали список наявних хімікатів, потім згодиться.
+            response_status.add(self.chemicals.status_code)
             self.fields = requests.get(
                 "https://operations.cropwise.com/api/v3/fields", headers=self.headers
-            ).json()[
-                "data"
-            ]  # і список полів.
+            )  # і список полів.
+            response_status.add(self.fields.status_code)
             self.crops = requests.get(
                 "https://operations.cropwise.com/api/v3/crops", headers=self.headers
             )  # узнаємо які культури зареєстровано в системі
+            response_status.add(self.crops.status_code)
             self.fieldses = requests.get(
-                "https://operations.cropwise.com/api/v3/history_items",
+                f"https://operations.cropwise.com/api/v3/history_items&year={self.now.tm_year}",
                 headers=self.headers,
             )  # тут у нас всі поля
+            response_status.add(self.fieldses.status_code)
             self.operations = requests.get(
                 "https://operations.cropwise.com/api/v3/agro_operations",
                 headers=self.headers,
             )  # а туточки - всі операції (заплановані, виконані, відмінені)
-        except Exception as e:
-            logger.error(f"Помилка під час запиту до API Cropio: {e}")
-        logger.info(f"Код статуса запита до API Cropio: {self.chemicals.status_code}")
+            response_status.add(self.operations.status_code)
+        except Exception as excepty:
+            logger.error("Помилка під час запиту до API Cropio: %s", excepty)
+            response_status.add("exception")
+        logger.info("Код статуса запита до API Cropio: %s", response_status)
+        return response_status
 
     def honey_crops_ids(self):
-        """отримуємо список з id медоносів."""
+        """отримуємо список з id медоносів.
+
+        Returns:
+            list: список з id  рослин, які є медоносами
+        """
         crops_standard_name = {
             "buckwheat",
             "linum",
@@ -71,13 +92,18 @@ class Cropwise:
         return honey_crops_id
 
     def honey_fields_ids(self, honey_crops):
-        """отримуємо список id полів у поточному році з медоносами."""
+        """отримуємо список id полів у поточному році з медоносами.
+
+        Args:
+            honey_crops (list): список з id медоносів, за яким відфільтровуватимуться поля в
+            поточному році
+
+        Returns:
+            list: список з id полів
+        """
         honey_fields_id = []
         for field in self.fieldses.json()["data"]:
-            if (
-                int(field["year"]) == arrow.now().year
-                and field["crop_id"] in honey_crops
-            ):
+            if (field["crop_id"] in honey_crops):
                 honey_fields_id.append(field["field_id"])
         return honey_fields_id
 
@@ -135,12 +161,12 @@ class Cropwise:
             "seed_treatment": "протруйники",
             "other": "інше",
         }
-        for chemical in self.chemicals:
+        for chemical in self.chemicals.json()["data"]:
             if chemical["id"] == chemical_id:
                 chemical_name = chemical["name"]
                 chemical_type = chemical_types[chemical["chemical_type"]]
                 break
-        for field in self.fields:
+        for field in self.fields.json()["data"]:
             if field["id"] == field_id:
                 field_name = field["name"]
                 field_shape = json.loads(field["shape_simplified_geojson"])[
@@ -160,13 +186,7 @@ class Cropwise:
             start_date_text = "післязавтра"
 
         return [
-            """На {0} планується обробка поля \"{1}\"{2}. Препарат: {3}, що входить до групи {4}.""".format(
-                start_date_text,
-                field_name,
-                field_locality,
-                chemical_name,
-                chemical_type,
-            ),
+            f'На {start_date_text} планується обробка поля "{field_name}"{field_locality}. Препарат: {chemical_name}, що входить до групи {chemical_type}.',
             self.centroide(field_shape),
         ]
 
@@ -180,8 +200,8 @@ class Cropwise:
                 data=values,
                 headers=headers,
             )
-        except Exception as e:
-            logger.error(f"Помилка під час запиту до API Cropio: {e}")
+        except Exception as excepty:
+            logger.error("Помилка під час запиту до API Cropio: %s", excepty)
         return response.json()["user_api_token"]
 
 
@@ -207,7 +227,7 @@ def post_message(args: list):
 
 if __name__ == "__main__":
     agrofirm = Cropwise(os.getenv("TOKEN_CROPIO"))
-    for operation in agrofirm.get_planned_operations(
+    for one_operation in agrofirm.get_planned_operations(
         agrofirm.honey_fields_ids(agrofirm.honey_crops_ids())
     ):
-        post_message(agrofirm.get_message(*operation))
+        post_message(agrofirm.get_message(*one_operation))
